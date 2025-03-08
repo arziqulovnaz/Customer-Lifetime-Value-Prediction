@@ -86,3 +86,21 @@ cluster_summary = rfm.groupby("Cluster").agg({
 }).round(2)
 
 print(cluster_summary)
+
+# Assign business labels
+rfm["Segment"] = rfm["Cluster"].map({
+    0: "VIP Customers",
+    1: "At-Risk Customers",
+    2: "Regular Customers",
+    3: "Big Spenders"
+})
+
+# Display the first few rows with segments
+rfm.head()
+
+plt.figure(figsize=(8, 5))
+sns.countplot(x="Segment", data=rfm, palette="viridis")
+plt.title("Customer Segment Distribution")
+plt.xlabel("Segment")
+plt.ylabel("Number of Customers")
+plt.show()
