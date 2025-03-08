@@ -76,4 +76,13 @@ rfm.head()
 # Pairplot to visualize clusters
 sns.pairplot(rfm, hue="Cluster", palette="viridis")
 plt.suptitle("RFM Clusters", y=1.02)
-plt.show()
+# plt.show()
+
+# Calculate mean RFM values for each cluster
+cluster_summary = rfm.groupby("Cluster").agg({
+    "Recency": "mean",
+    "Frequency": "mean",
+    "Monetary": "mean"
+}).round(2)
+
+print(cluster_summary)
