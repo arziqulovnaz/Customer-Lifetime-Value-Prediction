@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import datetime as dt
+from sklearn.preprocessing import MinMaxScaler
 
 # loading data
 online_reatil_data = r'C:/Users/user/Desktop/Customer-Lifetime-Value-Prediction/OnlineRetail.xlsx'
@@ -14,7 +14,7 @@ df["TotalAmount"] = df["Quantity"] * df["UnitPrice"]
 # Visualize TotalAmount distribution
 sns.histplot(df["TotalAmount"], bins=30, kde=True)
 plt.title("Distribution of Total Spend per Customer")
-plt.show()
+# plt.show()
 
 # the most money spent curstomers' top 10 list
 customer_spending = df.groupby("CustomerID")["TotalAmount"].sum().sort_values(ascending=False)
@@ -34,4 +34,13 @@ rfm.head()
 for col in rfm.columns:
     sns.histplot(rfm[col], bins=30, kde=True)
     plt.title(f"{col} Distribution")
-    plt.show()
+    # plt.show()
+
+# Normalize RFM features
+scaler = MinMaxScaler()
+rfm_scaled = scaler.fit_transform(rfm[["Recency", "Frequency", "Monetary"]])
+
+# Convert back to DataFrame
+rfm_normalized = pd.DataFrame(rfm_scaled, columns=["Recency", "Frequency", "Monetary"], index=rfm.index)
+
+print(rfm_normalized.head())
