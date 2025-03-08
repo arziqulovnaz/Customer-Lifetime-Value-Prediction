@@ -61,4 +61,14 @@ plt.plot(K_range, inertia, marker="o")
 plt.xlabel("Number of Clusters (K)")
 plt.ylabel("Inertia")
 plt.title("Elbow Method for Optimal K")
-plt.show()
+# plt.show()
+
+# implement optimal K, in our case it is 2.
+optimal_k = 2 # Change this based on the elbow plot
+
+# Apply K-Means
+kmeans = KMeans(n_clusters=optimal_k, random_state=42)
+rfm["Cluster"] = kmeans.fit_predict(rfm_normalized)
+
+# Display the first few rows with cluster labels
+print(rfm.head())
