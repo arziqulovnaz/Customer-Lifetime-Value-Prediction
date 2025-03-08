@@ -71,4 +71,9 @@ kmeans = KMeans(n_clusters=optimal_k, random_state=42)
 rfm["Cluster"] = kmeans.fit_predict(rfm_normalized)
 
 # Display the first few rows with cluster labels
-print(rfm.head())
+rfm.head()
+
+# Pairplot to visualize clusters
+sns.pairplot(rfm, hue="Cluster", palette="viridis")
+plt.suptitle("RFM Clusters", y=1.02)
+plt.show()
