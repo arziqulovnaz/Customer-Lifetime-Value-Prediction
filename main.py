@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
 
 # loading data
 online_reatil_data = r'C:/Users/user/Desktop/Customer-Lifetime-Value-Prediction/OnlineRetail.xlsx'
@@ -43,4 +44,21 @@ rfm_scaled = scaler.fit_transform(rfm[["Recency", "Frequency", "Monetary"]])
 # Convert back to DataFrame
 rfm_normalized = pd.DataFrame(rfm_scaled, columns=["Recency", "Frequency", "Monetary"], index=rfm.index)
 
-print(rfm_normalized.head())
+rfm_normalized.head()
+
+# Try different cluster sizes (K)
+inertia = []
+K_range = range(1, 11)
+
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(rfm_normalized)
+    inertia.append(kmeans.inertia_)
+
+# Plot the Elbow Method graph
+plt.figure(figsize=(8, 5))
+plt.plot(K_range, inertia, marker="o")
+plt.xlabel("Number of Clusters (K)")
+plt.ylabel("Inertia")
+plt.title("Elbow Method for Optimal K")
+plt.show()
