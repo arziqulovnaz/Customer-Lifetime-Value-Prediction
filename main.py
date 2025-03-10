@@ -104,3 +104,39 @@ plt.title("Customer Segment Distribution")
 plt.xlabel("Segment")
 plt.ylabel("Number of Customers")
 plt.show()
+
+# Calculate additional features
+rfm["AveragePurchaseValue"] = rfm["Monetary"] / rfm["Frequency"]
+rfm["CustomerAge"] = (df.groupby("CustomerID")["InvoiceDate"].max() - df.groupby("CustomerID")["InvoiceDate"].min()).dt.days
+rfm.head()
+# Calculate total purchases per customer
+purchase_frequency = df.groupby("CustomerID")["InvoiceNo"].nunique().reset_index()
+purchase_frequency.columns = ["CustomerID", "TotalPurchases"]
+
+# Calculate customer lifetime (in days)
+customer_lifetime = (df.groupby("CustomerID")["InvoiceDate"].max() - df.groupby("CustomerID")["InvoiceDate"].min()).dt.days.reset_index()
+customer_lifetime.columns = ["CustomerID", "CustomerLifetime"]
+
+# Merge with RFM data
+rfm = rfm.merge(purchase_frequency, on="CustomerID")
+rfm = rfm.merge(customer_lifetime, on="CustomerID")
+
+# Calculate Purchase Frequency (purchases per month)
+rfm["PurchaseFrequency"] = rfm["TotalPurchases"] / (rfm["CustomerLifetime"] / 30)  # Convert days to months
+
+# Display the updated RFM DataFrame
+rfm.head()
+
+# Define churn threshold (e.g., 90 days)
+churn_threshold = 90
+
+# Calculate days since last purchase
+rfm["DaysSinceLastPurchase"] = (df.groupby("CustomerID")["InvoiceDate"].max().max() - df.groupby("CustomerID")["InvoiceDate"].max()).dt.days
+
+# Define churn (1 = churned, 0 = not churned)
+rfm["Churned"] = (rfm["DaysSinceLastPurchase"] > churn_threshold).astype(int)
+
+# Display the updated RFM DataFrame
+rfm.head()
+
+print(rfm.head())
