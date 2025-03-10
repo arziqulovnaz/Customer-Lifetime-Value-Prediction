@@ -139,4 +139,8 @@ rfm["Churned"] = (rfm["DaysSinceLastPurchase"] > churn_threshold).astype(int)
 # Display the updated RFM DataFrame
 rfm.head()
 
-print(rfm.head())
+# Drop unnecessary columns
+rfm_clv = rfm.drop(columns=["Segment"])  # Keep only numeric features for modeling
+
+# Check for missing values
+print(rfm_clv.isnull().sum())
