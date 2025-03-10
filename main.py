@@ -143,4 +143,16 @@ rfm.head()
 rfm_clv = rfm.drop(columns=["Segment"])  # Keep only numeric features for modeling
 
 # Check for missing values
-print(rfm_clv.isnull().sum())
+rfm_clv.isnull().sum()
+
+from sklearn.model_selection import train_test_split
+
+# Define features (X) and target (y)
+X = rfm_clv.drop(columns=["Monetary"])  # Features
+y = rfm_clv["Monetary"]  # Target (CLV)
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print("Training set shape:", X_train.shape)
+print("Testing set shape:", X_test.shape)
