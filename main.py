@@ -201,17 +201,77 @@ param_grid = {
     "min_samples_split": [2, 5, 10]
 }
 
-# Perform grid search
-grid_search = GridSearchCV(RandomForestRegressor(random_state=42), param_grid, cv=5, scoring="r2")
-grid_search.fit(X_train, y_train)
+# # Perform grid search
+# grid_search = GridSearchCV(RandomForestRegressor(random_state=42), param_grid, cv=5, scoring="r2")
+# grid_search.fit(X_train, y_train)
 
-# Get the best model
-best_model = grid_search.best_estimator_
-print("Best parameters:", grid_search.best_params_)
+# # Get the best model
+# best_model = grid_search.best_estimator_
+# print("Best parameters:", grid_search.best_params_)
 
-# Evaluate the best model
-y_pred_best = best_model.predict(X_test)
-mse_best = mean_squared_error(y_test, y_pred_best)
-r2_best = r2_score(y_test, y_pred_best)
-print("Best Model MSE:", mse_best)
-print("Best Model R2:", r2_best)
+# # Evaluate the best model
+# y_pred_best = best_model.predict(X_test)
+# mse_best = mean_squared_error(y_test, y_pred_best)
+# r2_best = r2_score(y_test, y_pred_best)
+# print("Best Model MSE:", mse_best)
+# print("Best Model R2:", r2_best)
+
+rfm_clv["Monetary"] = np.log1p(rfm_clv["Monetary"])  # Log transform Monetary
+
+rfm_clv["Recency_Frequency"] = rfm_clv["Recency"] * rfm_clv["Frequency"]
+
+# # Get feature importances from the tuned model
+# feature_importances = pd.Series(best_model.feature_importances_, index=X.columns)
+# feature_importances.sort_values(ascending=False).plot(kind="bar")
+# plt.title("Feature Importances")
+# plt.show()
+
+# # Select top N features
+# top_features = feature_importances.nlargest(5).index
+# X_top = X[top_features]
+
+from xgboost import XGBRegressor
+
+# Initialize and train the model
+xgb_model = XGBRegressor(random_state=42)
+xgb_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred_xgb = xgb_model.predict(X_test)
+
+# Evaluate the model
+mse_xgb = mean_squared_error(y_test, y_pred_xgb)
+r2_xgb = r2_score(y_test, y_pred_xgb)
+print("XGBoost MSE:", mse_xgb)
+print("XGBoost R2:", r2_xgb)
+
+# from sklearn.model_selection import GridSearchCV
+
+# # Define parameter grid
+# param_grid = {
+#     "n_estimators": [100, 200, 300],
+#     "max_depth": [3, 5, 7],
+#     "learning_rate": [0.01, 0.1, 0.2]
+# }
+
+# # Perform grid search
+# grid_search = GridSearchCV(XGBRegressor(random_state=42), param_grid, cv=5, scoring="r2")
+# grid_search.fit(X_train, y_train)
+
+# # Get the best model
+# best_xgb_model = grid_search.best_estimator_
+# print("Best parameters:", grid_search.best_params_)
+
+# # Evaluate the best model
+# y_pred_best_xgb = best_xgb_model.predict(X_test)
+# mse_best_xgb = mean_squared_error(y_test, y_pred_best_xgb)
+# r2_best_xgb = r2_score(y_test, y_pred_best_xgb)
+# print("Best XGBoost MSE:", mse_best_xgb)
+# print("Best XGBoost R2:", r2_best_xgb)
+
+# from sklearn.model_selection import cross_val_score
+
+# # Perform cross-validation
+# scores = cross_val_score(best_model, X, y, cv=5, scoring="r2")
+# print("Cross-validated R2 scores:", scores)
+# print("Mean R2:", scores.mean())
