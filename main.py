@@ -1,8 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+import numpy as np
 
 # loading data
 online_reatil_data = r'C:/Users/user/Desktop/Customer-Lifetime-Value-Prediction/OnlineRetail.xlsx'
@@ -30,7 +34,6 @@ rfm = df.groupby("CustomerID").agg({
 })
 
 rfm.columns = ["Recency", "Frequency", "Monetary"]
-rfm.head()
 
 for col in rfm.columns:
     sns.histplot(rfm[col], bins=30, kde=True)
@@ -85,25 +88,22 @@ cluster_summary = rfm.groupby("Cluster").agg({
     "Monetary": "mean"
 }).round(2)
 
-print(cluster_summary)
 
 # Assign business labels
 rfm["Segment"] = rfm["Cluster"].map({
     0: "VIP Customers",
     1: "At-Risk Customers",
-    2: "Regular Customers",
-    3: "Big Spenders"
 })
 
-# Display the first few rows with segments
-rfm.head()
+rfm["Frequency"] = rfm["Frequency"].replace(0, 1)  # Replace 0 with 1
+  # Replace 0 with 1
 
 plt.figure(figsize=(8, 5))
 sns.countplot(x="Segment", data=rfm, palette="viridis")
 plt.title("Customer Segment Distribution")
 plt.xlabel("Segment")
 plt.ylabel("Number of Customers")
-plt.show()
+# plt.show()
 
 # Calculate additional features
 rfm["AveragePurchaseValue"] = rfm["Monetary"] / rfm["Frequency"]
@@ -117,42 +117,101 @@ purchase_frequency.columns = ["CustomerID", "TotalPurchases"]
 customer_lifetime = (df.groupby("CustomerID")["InvoiceDate"].max() - df.groupby("CustomerID")["InvoiceDate"].min()).dt.days.reset_index()
 customer_lifetime.columns = ["CustomerID", "CustomerLifetime"]
 
-# Merge with RFM data
-rfm = rfm.merge(purchase_frequency, on="CustomerID")
-rfm = rfm.merge(customer_lifetime, on="CustomerID")
+# Drop rows with missing CustomerID in purchase_frequency and customer_lifetime
+purchase_frequency = purchase_frequency[purchase_frequency["CustomerID"].notna()]
+customer_lifetime = customer_lifetime[customer_lifetime["CustomerID"].notna()]
+
+# Merge with rfm
+rfm = rfm.merge(purchase_frequency, on="CustomerID", how="inner")
+rfm = rfm.merge(customer_lifetime, on="CustomerID", how="inner")
 
 # Calculate Purchase Frequency (purchases per month)
 rfm["PurchaseFrequency"] = rfm["TotalPurchases"] / (rfm["CustomerLifetime"] / 30)  # Convert days to months
-
 # Display the updated RFM DataFrame
-rfm.head()
 
 # Define churn threshold (e.g., 90 days)
 churn_threshold = 90
 
 # Calculate days since last purchase
-rfm["DaysSinceLastPurchase"] = (df.groupby("CustomerID")["InvoiceDate"].max().max() - df.groupby("CustomerID")["InvoiceDate"].max()).dt.days
+# Calculate the last purchase date for each customer
+last_purchase_dates = df.groupby("CustomerID")["InvoiceDate"].max()
 
-# Define churn (1 = churned, 0 = not churned)
+# Calculate the reference date (latest purchase date across all customers)
+reference_date = last_purchase_dates.max()
+
+# Calculate days since last purchase for each customer
+# Align last_purchase_dates with rfm's index
+print("Reference Date:", reference_date)
+print("Last Purchase Dates Sample:")
+print(last_purchase_dates.head())
+
+print("Before Assignment:")
+print((reference_date - last_purchase_dates).dt.days.head())
+
+# Assign after fixing potential issues
+rfm = rfm.reset_index()
+last_purchase_dates = last_purchase_dates.reset_index()
+
+rfm["DaysSinceLastPurchase"] = (reference_date - last_purchase_dates["InvoiceDate"]).dt.days
+
+
+print("After Assignment:")
+print(rfm["DaysSinceLastPurchase"].head())
+
 rfm["Churned"] = (rfm["DaysSinceLastPurchase"] > churn_threshold).astype(int)
 
-# Display the updated RFM DataFrame
-rfm.head()
 
 # Drop unnecessary columns
-rfm_clv = rfm.drop(columns=["Segment"])  # Keep only numeric features for modeling
+if "Segment" in rfm.columns:
+    rfm_clv = rfm.drop(columns=["Segment"])
+else:
+    print("Column 'Segment' does not exist in the DataFrame.")
+    rfm_clv = rfm.copy()
+rfm_clv.replace([np.inf, -np.inf], np.nan, inplace=True)
 
-# Check for missing values
-rfm_clv.isnull().sum()
-
-from sklearn.model_selection import train_test_split
+rfm_clv = rfm_clv.dropna()
 
 # Define features (X) and target (y)
-X = rfm_clv.drop(columns=["Monetary"])  # Features
-y = rfm_clv["Monetary"]  # Target (CLV)
+X = rfm_clv.drop(columns=["Monetary", "CustomerID"])
+y = rfm_clv["Monetary"]
 
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 # Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestRegressor
 
-print("Training set shape:", X_train.shape)
-print("Testing set shape:", X_test.shape)
+# Initialize and train the model
+rf_model = RandomForestRegressor(random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Make predictions
+y_pred_rf = rf_model.predict(X_test)
+
+# Evaluate the model
+mse_rf = mean_squared_error(y_test, y_pred_rf)
+r2_rf = r2_score(y_test, y_pred_rf)
+print("Random Forest MSE:", mse_rf)
+print("Random Forest R2:", r2_rf)
+# Define parameter grid
+param_grid = {
+    "n_estimators": [100, 200, 300],
+    "max_depth": [None, 10, 20],
+    "min_samples_split": [2, 5, 10]
+}
+
+# Perform grid search
+grid_search = GridSearchCV(RandomForestRegressor(random_state=42), param_grid, cv=5, scoring="r2")
+grid_search.fit(X_train, y_train)
+
+# Get the best model
+best_model = grid_search.best_estimator_
+print("Best parameters:", grid_search.best_params_)
+
+# Evaluate the best model
+y_pred_best = best_model.predict(X_test)
+mse_best = mean_squared_error(y_test, y_pred_best)
+r2_best = r2_score(y_test, y_pred_best)
+print("Best Model MSE:", mse_best)
+print("Best Model R2:", r2_best)
